@@ -3,11 +3,14 @@ import mongoose, { type Document, Schema } from "mongoose";
 export interface IAccount extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
+  name: string;
   type: string;
   number: string;
   balance: number;
   currency: string;
   limit?: number;
+  status?: boolean;
+  createdAt?: Date;
 }
 
 const accountSchema = new Schema<IAccount>(
@@ -17,14 +20,15 @@ const accountSchema = new Schema<IAccount>(
       ref: "User",
       required: true
     },
+    name: {
+      type: String,
+    },
     type: {
       type: String,
       required: true
     },
     number: {
       type: String,
-      required: true,
-      unique: true
     },
     balance: {
       type: Number,
@@ -38,6 +42,10 @@ const accountSchema = new Schema<IAccount>(
     },
     limit: {
       type: Number
+    },
+    status: {
+      type: Boolean,
+      default: true
     }
   },
   { timestamps: true }

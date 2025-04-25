@@ -48,6 +48,9 @@ export const signin = async (req: Request, res: Response): Promise<void> => {
       name: user.name,
       email: user.email,
       role: user.role,
+      dob: user.dob ?? null,
+      phone: user.phone ?? null,
+      address: user.address ?? null,
       token
     };
     sendResponse(res, 200, true, "Sign-in successful", filteredUser);

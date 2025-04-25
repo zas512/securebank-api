@@ -11,6 +11,10 @@ export interface IUser extends Document {
   dob: Date;
   phone: string;
   address: string;
+  securityQuestions: {
+    question: string;
+    answer: string;
+  }[];
 }
 
 const userSchema = new Schema<IUser>(
@@ -39,20 +43,24 @@ const userSchema = new Schema<IUser>(
     },
     dob: {
       type: Date,
-      required: true
     },
     phone: {
       type: String,
-      required: true
     },
     address: {
       type: String,
-      required: true
-    }
+    },
+    securityQuestions: [
+      {
+        question: { type: String },
+        answer: { type: String }
+      }
+    ]
   },
   { timestamps: true }
 );
 
+// Password hashing
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   try {
@@ -64,6 +72,7 @@ userSchema.pre("save", async function (next) {
   }
 });
 
+// PIN hashing
 userSchema.pre("save", async function (next) {
   if (!this.isModified("pin")) return next();
   try {

@@ -2,11 +2,13 @@ import { Router } from "express";
 import authRoutes from "./auth.routes";
 import accountRoutes from "./account.routes";
 import transactionRoutes from "./transaction.routes";
+import userRoutes from "./user.routes";
 
 const router = Router();
 
 router.use("/auth", authRoutes);
 router.use("/accounts", accountRoutes);
 router.use("/transactions", transactionRoutes);
+router.use("/user", userRoutes);
 
 export default router;
