@@ -9,6 +9,8 @@ export interface ITransaction extends Document {
   type: "credit" | "debit" | "transfer";
   reference?: string;
   date: Date;
+  fromAccountId?: mongoose.Types.ObjectId;
+  toAccountId?: mongoose.Types.ObjectId;
 }
 
 const transactionSchema = new Schema<ITransaction>(
@@ -42,6 +44,9 @@ const transactionSchema = new Schema<ITransaction>(
     reference: {
       type: String
     },
+    fromAccountId: { type: Schema.Types.ObjectId, ref: "Account" },
+    toAccountId: { type: Schema.Types.ObjectId, ref: "Account" },
+
     date: {
       type: Date,
       default: Date.now

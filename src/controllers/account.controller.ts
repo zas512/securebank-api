@@ -108,7 +108,9 @@ export const transferMoney = async (req: Request, res: Response): Promise<void> 
         description,
         category: "transfer",
         type: "debit",
-        reference: toAccount.number
+        reference: toAccount.number,
+        fromAccountId: fromAccount._id,
+        toAccountId: toAccount._id
       });
 
       const creditTransaction = new Transaction({
@@ -118,7 +120,9 @@ export const transferMoney = async (req: Request, res: Response): Promise<void> 
         description,
         category: "transfer",
         type: "credit",
-        reference: fromAccount.number
+        reference: fromAccount.number,
+        fromAccountId: fromAccount._id,
+        toAccountId: toAccount._id
       });
 
       // Save all changes

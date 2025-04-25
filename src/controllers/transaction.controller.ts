@@ -20,26 +20,60 @@ export const getTransactionDetails = async (req: Request, res: Response): Promis
     const { transactionId } = req.params;
     const userId = req.user?.id;
 
+    if (!userId) {
+      sendResponse(res, 401, false, "Unauthorized");
+      return;
+    }
+
     // Get user's accounts
     const userAccounts = await Account.find({ userId });
     const accountIds = userAccounts.map((account) => account._id);
 
     const transaction = await Transaction.findOne({
       _id: transactionId,
-      accountId: { $in: accountIds }
-    }).populate("accountId", "number type");
+      $or: [
+        { accountId: { $in: accountIds } },
+        { fromAccountId: { $in: accountIds } },
+        { toAccountId: { $in: accountIds } }
+      ]
+    })
+    .populate("accountId", "number type")
+    .populate("fromAccountId", "number type")
+    .populate("toAccountId", "number type");
 
     if (!transaction) {
       sendResponse(res, 404, false, "Transaction not found");
       return;
     }
 
-    sendResponse(res, 200, true, "Transaction details retrieved successfully", { transaction });
+    const isTransfer = transaction.category === "transfer";
+
+    const responseData: any = {
+      id: transaction._id,
+      amount: transaction.amount,
+      type: transaction.type,
+      category: transaction.category,
+      date: transaction.date,
+      description: transaction.description,
+      balance: transaction.balance,
+    };
+
+    if (isTransfer) {
+      responseData.fromAccount = transaction.fromAccountId || null;
+      responseData.toAccount = transaction.toAccountId || null;
+    } else {
+      responseData.account = transaction.accountId || null;
+    }
+
+    sendResponse(res, 200, true, "Transaction details retrieved successfully", {
+      transaction: responseData
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Internal server error";
     sendResponse(res, 500, false, errorMessage);
   }
 };
+
 
 
 export const getTransactions = async (req: Request, res: Response): Promise<void> => {

@@ -4,6 +4,7 @@ import accountRoutes from "./account.routes";
 import transactionRoutes from "./transaction.routes";
 import userRoutes from "./user.routes";
 import overviewRoutes from "./overview.routes";
+import adminRoutes from "./admin.routes";
 
 const router = Router();
 
@@ -12,5 +13,8 @@ router.use("/accounts", accountRoutes);
 router.use("/transactions", transactionRoutes);
 router.use("/user", userRoutes);
 router.use("/overview", overviewRoutes);
+
+//  just for admin
+router.use("/admin", adminRoutes);
 
 export default router;
