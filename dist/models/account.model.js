@@ -40,14 +40,15 @@ const accountSchema = new mongoose_1.Schema({
         ref: "User",
         required: true
     },
+    name: {
+        type: String,
+    },
     type: {
         type: String,
         required: true
     },
     number: {
         type: String,
-        required: true,
-        unique: true
     },
     balance: {
         type: Number,
@@ -61,6 +62,10 @@ const accountSchema = new mongoose_1.Schema({
     },
     limit: {
         type: Number
+    },
+    status: {
+        type: Boolean,
+        default: true
     }
 }, { timestamps: true });
 exports.default = mongoose_1.default.model("Account", accountSchema);

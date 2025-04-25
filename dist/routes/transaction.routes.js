@@ -9,6 +9,6 @@ const requireAuth_1 = __importDefault(require("../middlewares/requireAuth"));
 const router = (0, express_1.Router)();
 // All routes require authentication
 router.use(requireAuth_1.default);
-router.get("/", transaction_controller_1.getTransactions);
+router.get("/get", transaction_controller_1.getTransactions);
 router.get("/:transactionId", transaction_controller_1.getTransactionDetails);
 exports.default = router;

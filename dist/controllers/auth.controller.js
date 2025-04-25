@@ -40,6 +40,7 @@ const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.signup = signup;
 const signin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
     try {
         const { email, password } = req.body;
         if (!email || !password) {
@@ -62,6 +63,9 @@ const signin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             name: user.name,
             email: user.email,
             role: user.role,
+            dob: (_a = user.dob) !== null && _a !== void 0 ? _a : null,
+            phone: (_b = user.phone) !== null && _b !== void 0 ? _b : null,
+            address: (_c = user.address) !== null && _c !== void 0 ? _c : null,
             token
         };
         (0, responseHelper_1.default)(res, 200, true, "Sign-in successful", filteredUser);

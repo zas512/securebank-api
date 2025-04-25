@@ -69,8 +69,24 @@ const userSchema = new mongoose_1.Schema({
         type: String,
         enum: ["user", "admin"],
         default: "user"
-    }
+    },
+    dob: {
+        type: Date,
+    },
+    phone: {
+        type: String,
+    },
+    address: {
+        type: String,
+    },
+    securityQuestions: [
+        {
+            question: { type: String },
+            answer: { type: String }
+        }
+    ]
 }, { timestamps: true });
+// Password hashing
 userSchema.pre("save", function (next) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!this.isModified("password"))
@@ -85,6 +101,7 @@ userSchema.pre("save", function (next) {
         }
     });
 });
+// PIN hashing
 userSchema.pre("save", function (next) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!this.isModified("pin"))
