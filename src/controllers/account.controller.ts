@@ -248,34 +248,14 @@ export const deleteAccount = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-
     if (account.balance > 0) {
       sendResponse(res, 400, false, "Account cannot be deleted. Balance must be zero.");
       return;
     }
 
-    // Update the account balance
-    account.balance += amount;
-    await account.save();
-
-    // Create a transaction record
-    const transaction = new Transaction({
-      accountId: account._id,
-      amount,
-      balance: account.balance,
-      description: description ?? "Deposit",
-      category: "deposit",
-      type: "credit", // It's a credit to the account
-      date: new Date()
-    });
-
-
     await Account.deleteOne({ _id: accountId });
 
-
     sendResponse(res, 200, true, "Account deleted successfully");
-
-
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Internal server error";
     sendResponse(res, 500, false, errorMessage);
