@@ -8,11 +8,7 @@
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
-    "lint": "eslint 'src/**/*.ts'",
-    "lint:fix": "eslint 'src/**/*.ts' --fix",
-    "format": "prettier --write 'src/**/*.ts'",
-    "seed": "ts-node src/seeder.ts"
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
