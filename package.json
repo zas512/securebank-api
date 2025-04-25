@@ -1,7 +1,7 @@
 {
-  "name": "twinsting-api",
+  "name": "securebank-api",
   "version": "1.0.0",
-  "description": "Backend for Twinsting",
+  "description": "Backend for SecureBank",
   "license": "ISC",
   "author": "",
   "main": "dist/server.js",
