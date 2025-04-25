@@ -27,7 +27,7 @@ app.use((0, cors_1.default)({
 }));
 app.use(express_1.default.json());
 // Routes
-app.get("/test", (req, res) => {
+app.get("/", (req, res) => {
     res.status(200).json({ message: "Server working" });
 });
 app.use("/", index_1.default);
