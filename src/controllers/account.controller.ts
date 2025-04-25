@@ -3,6 +3,7 @@ import Transaction from "../models/transaction.model";
 import type { Request, Response } from "express";
 import sendResponse from "../utils/responseHelper";
 import { verifyPin } from "../utils/verifyPin";
+import mongoose from "mongoose"
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -67,6 +68,11 @@ export const transferMoney = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
+    if (amount <= 0) {
+      sendResponse(res, 400, false, "Transfer amount must be greater than zero");
+      return;
+    }
+
     // Verify PIN
     const isPinValid = await verifyPin(userId, pin);
     if (!isPinValid) {
@@ -74,33 +80,30 @@ export const transferMoney = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Start a session for transaction
-    const session = await Account.startSession();
+    // Start a session
+    const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      // Get and validate source account
-      const fromAccount = await Account.findOne({ _id: fromAccountId, userId });
+      // Validate source account
+      const fromAccount = await Account.findOne({ _id: fromAccountId, userId }).session(session);
       if (!fromAccount) {
         throw new Error("Source account not found or unauthorized");
       }
 
-      // Get destination account
-      const toAccount = await Account.findById(toAccountId);
-      if (!toAccount) {
-        throw new Error("Destination account not found");
-      }
-
-      // Check if source account has sufficient balance
       if (fromAccount.balance < amount) {
         throw new Error("Insufficient balance");
       }
 
-      // Update balances
-      fromAccount.balance -= amount;
-      toAccount.balance += amount;
+      // Check if toAccount is valid ObjectId & exists
+      let toAccount = null;
+      if (mongoose.Types.ObjectId.isValid(toAccountId)) {
+        toAccount = await Account.findById(toAccountId).session(session);
+      }
 
-      // Create transaction records
+      // Always debit from source
+      fromAccount.balance -= amount;
+
       const debitTransaction = new Transaction({
         accountId: fromAccount._id,
         amount,
@@ -108,34 +111,43 @@ export const transferMoney = async (req: Request, res: Response): Promise<void> 
         description,
         category: "transfer",
         type: "debit",
-        reference: toAccount.number,
+        reference: toAccount ? toAccount.number : toAccountId, // fallback to raw ID if not found
         fromAccountId: fromAccount._id,
-        toAccountId: toAccount._id
+        ...(toAccount && { toAccountId: toAccount._id })
       });
 
-      const creditTransaction = new Transaction({
-        accountId: toAccount._id,
-        amount,
-        balance: toAccount.balance,
-        description,
-        category: "transfer",
-        type: "credit",
-        reference: fromAccount.number,
-        fromAccountId: fromAccount._id,
-        toAccountId: toAccount._id
-      });
-
-      // Save all changes
       await fromAccount.save({ session });
-      await toAccount.save({ session });
       await debitTransaction.save({ session });
-      await creditTransaction.save({ session });
+
+      let creditTransaction = null;
+
+      if (toAccount) {
+        toAccount.balance += amount;
+
+        creditTransaction = new Transaction({
+          accountId: toAccount._id,
+          amount,
+          balance: toAccount.balance,
+          description,
+          category: "transfer",
+          type: "credit",
+          reference: fromAccount.number,
+          fromAccountId: fromAccount._id,
+          toAccountId: toAccount._id
+        });
+
+        await toAccount.save({ session });
+        await creditTransaction.save({ session });
+      }
 
       await session.commitTransaction();
+
       sendResponse(res, 200, true, "Transfer successful", {
         fromAccount,
-        toAccount,
-        transactions: [debitTransaction, creditTransaction]
+        ...(toAccount && { toAccount }),
+        transactions: creditTransaction
+          ? [debitTransaction, creditTransaction]
+          : [debitTransaction]
       });
     } catch (error) {
       await session.abortTransaction();
