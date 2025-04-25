@@ -6,19 +6,17 @@ import { verifyPin } from "../utils/verifyPin";
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { type, currency, limit, pin } = req.body;
+    const { type, currency, limit, pin, name } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
       sendResponse(res, 401, false, "Unauthorized");
       return;
     }
-
     if (!type || typeof type !== "string") {
       sendResponse(res, 400, false, "Account type is required and must be a string");
       return;
     }
-
     if (!pin || typeof pin !== "string") {
       sendResponse(res, 400, false, "PIN is required and must be a string");
       return;
@@ -28,14 +26,13 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
       sendResponse(res, 400, false, "Invalid PIN");
       return;
     }
-
-    // Generate a random 10-digit account number
     const number = Math.floor(1000000000 + Math.random() * 9000000000).toString();
 
     const account = new Account({
       userId,
       type,
       number,
+      name,
       balance: 0,
       currency: currency ?? "USD",
       limit
@@ -148,7 +145,6 @@ export const transferMoney = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-
 export const getAccountDetails = async (req: Request, res: Response): Promise<void> => {
   try {
     const { accountId } = req.params;
@@ -216,7 +212,7 @@ export const payBill = async (req: Request, res: Response): Promise<void> => {
       balance: account.balance,
       description,
       category,
-      type: "debit", // It's a debit transaction for the bill payment
+      type: "debit" // It's a debit transaction for the bill payment
     });
 
     // Save the updated account and the transaction
@@ -226,7 +222,7 @@ export const payBill = async (req: Request, res: Response): Promise<void> => {
     // Send response indicating success
     sendResponse(res, 200, true, "Bill payment successful", {
       account,
-      transaction: billTransaction,
+      transaction: billTransaction
     });
   } catch (error) {
     // Handle errors and send an appropriate response
@@ -278,14 +274,14 @@ export const depositMoney = async (req: Request, res: Response): Promise<void> =
       description: description ?? "Deposit",
       category: "deposit",
       type: "credit", // It's a credit to the account
-      date: new Date(),
+      date: new Date()
     });
 
     await transaction.save();
 
     sendResponse(res, 200, true, "Deposit successful", {
       account,
-      transaction,
+      transaction
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Internal server error";
