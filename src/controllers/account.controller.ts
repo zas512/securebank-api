@@ -111,7 +111,9 @@ export const transferMoney = async (req: Request, res: Response): Promise<void> 
         description,
         category: "transfer",
         type: "debit",
-        reference: toAccount.number
+        reference: toAccount.number,
+        fromAccountId: fromAccount._id,
+        toAccountId: toAccount._id
       });
 
       const creditTransaction = new Transaction({
@@ -121,7 +123,9 @@ export const transferMoney = async (req: Request, res: Response): Promise<void> 
         description,
         category: "transfer",
         type: "credit",
-        reference: fromAccount.number
+        reference: fromAccount.number,
+        fromAccountId: fromAccount._id,
+        toAccountId: toAccount._id
       });
 
       // Save all changes
@@ -147,7 +151,6 @@ export const transferMoney = async (req: Request, res: Response): Promise<void> 
     sendResponse(res, 500, false, errorMessage);
   }
 };
-
 
 export const getAccountDetails = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -216,7 +219,7 @@ export const payBill = async (req: Request, res: Response): Promise<void> => {
       balance: account.balance,
       description,
       category,
-      type: "debit", // It's a debit transaction for the bill payment
+      type: "debit" // It's a debit transaction for the bill payment
     });
 
     // Save the updated account and the transaction
@@ -226,7 +229,7 @@ export const payBill = async (req: Request, res: Response): Promise<void> => {
     // Send response indicating success
     sendResponse(res, 200, true, "Bill payment successful", {
       account,
-      transaction: billTransaction,
+      transaction: billTransaction
     });
   } catch (error) {
     // Handle errors and send an appropriate response
