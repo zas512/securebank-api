@@ -25,7 +25,7 @@ app.use(
 app.use(express.json());
 
 // Routes
-app.get("/test", (req, res) => {
+app.get("/", (req, res) => {
   res.status(200).json({ message: "Server working" });
 });
 app.use("/", routes);
