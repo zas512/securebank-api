@@ -6,19 +6,17 @@ import { verifyPin } from "../utils/verifyPin";
 
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { type, currency, limit, pin } = req.body;
+    const { type, currency, limit, pin, name } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
       sendResponse(res, 401, false, "Unauthorized");
       return;
     }
-
     if (!type || typeof type !== "string") {
       sendResponse(res, 400, false, "Account type is required and must be a string");
       return;
     }
-
     if (!pin || typeof pin !== "string") {
       sendResponse(res, 400, false, "PIN is required and must be a string");
       return;
@@ -28,14 +26,13 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
       sendResponse(res, 400, false, "Invalid PIN");
       return;
     }
-
-    // Generate a random 10-digit account number
     const number = Math.floor(1000000000 + Math.random() * 9000000000).toString();
 
     const account = new Account({
       userId,
       type,
       number,
+      name,
       balance: 0,
       currency: currency ?? "USD",
       limit

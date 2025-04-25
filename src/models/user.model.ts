@@ -11,10 +11,8 @@ export interface IUser extends Document {
   dob: Date;
   phone: string;
   address: string;
-  securityQuestions: {
-    question: string;
-    answer: string;
-  }[];
+  securityQuestion1: string;
+  securityQuestion2: string;
 }
 
 const userSchema = new Schema<IUser>(
@@ -42,20 +40,20 @@ const userSchema = new Schema<IUser>(
       default: "user"
     },
     dob: {
-      type: Date,
+      type: Date
     },
     phone: {
-      type: String,
+      type: String
     },
     address: {
-      type: String,
+      type: String
     },
-    securityQuestions: [
-      {
-        question: { type: String },
-        answer: { type: String }
-      }
-    ]
+    securityQuestion1: {
+      type: String
+    },
+    securityQuestion2: {
+      type: String
+    }
   },
   { timestamps: true }
 );
