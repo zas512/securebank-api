@@ -12,15 +12,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.depositMoney = exports.payBill = exports.getAccountDetails = exports.transferMoney = exports.getAccounts = exports.createAccount = void 0;
+exports.deleteAccount = exports.payBill = exports.getAccountDetails = exports.transferMoney = exports.getAccounts = exports.createAccount = void 0;
 const account_model_1 = __importDefault(require("../models/account.model"));
 const transaction_model_1 = __importDefault(require("../models/transaction.model"));
 const responseHelper_1 = __importDefault(require("../utils/responseHelper"));
 const verifyPin_1 = require("../utils/verifyPin");
+const mongoose_1 = __importDefault(require("mongoose"));
 const createAccount = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
-        const { type, currency, limit, pin } = req.body;
+        const { type, currency, limit, pin, name } = req.body;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
         if (!userId) {
             (0, responseHelper_1.default)(res, 401, false, "Unauthorized");
@@ -39,12 +40,12 @@ const createAccount = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             (0, responseHelper_1.default)(res, 400, false, "Invalid PIN");
             return;
         }
-        // Generate a random 10-digit account number
         const number = Math.floor(1000000000 + Math.random() * 9000000000).toString();
         const account = new account_model_1.default({
             userId,
             type,
             number,
+            name,
             balance: 0,
             currency: currency !== null && currency !== void 0 ? currency : "USD",
             limit
@@ -80,63 +81,52 @@ const transferMoney = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             (0, responseHelper_1.default)(res, 401, false, "Unauthorized");
             return;
         }
-        // Verify PIN
+        if (amount <= 0) {
+            (0, responseHelper_1.default)(res, 400, false, "Transfer amount must be greater than zero");
+            return;
+        }
         const isPinValid = yield (0, verifyPin_1.verifyPin)(userId, pin);
         if (!isPinValid) {
             (0, responseHelper_1.default)(res, 400, false, "Invalid PIN");
             return;
         }
-        // Start a session for transaction
-        const session = yield account_model_1.default.startSession();
+        const session = yield mongoose_1.default.startSession();
         session.startTransaction();
         try {
-            // Get and validate source account
-            const fromAccount = yield account_model_1.default.findOne({ _id: fromAccountId, userId });
+            const fromAccount = yield account_model_1.default.findOne({ _id: fromAccountId, userId }).session(session);
             if (!fromAccount) {
                 throw new Error("Source account not found or unauthorized");
             }
-            // Get destination account
-            const toAccount = yield account_model_1.default.findById(toAccountId);
-            if (!toAccount) {
-                throw new Error("Destination account not found");
-            }
-            // Check if source account has sufficient balance
             if (fromAccount.balance < amount) {
                 throw new Error("Insufficient balance");
             }
-            // Update balances
+            let toAccount = null;
+            if (mongoose_1.default.Types.ObjectId.isValid(toAccountId)) {
+                toAccount = yield account_model_1.default.findById(toAccountId).session(session);
+            }
             fromAccount.balance -= amount;
-            toAccount.balance += amount;
-            // Create transaction records
-            const debitTransaction = new transaction_model_1.default({
-                accountId: fromAccount._id,
-                amount,
-                balance: fromAccount.balance,
-                description,
-                category: "transfer",
-                type: "debit",
-                reference: toAccount.number
-            });
-            const creditTransaction = new transaction_model_1.default({
-                accountId: toAccount._id,
-                amount,
-                balance: toAccount.balance,
-                description,
-                category: "transfer",
-                type: "credit",
-                reference: fromAccount.number
-            });
-            // Save all changes
+            const debitTransaction = new transaction_model_1.default(Object.assign({ accountId: fromAccount._id, amount, balance: fromAccount.balance, description, category: "transfer", type: "debit", reference: toAccount ? toAccount.number : toAccountId, fromAccountId: fromAccount._id }, (toAccount && { toAccountId: toAccount._id })));
             yield fromAccount.save({ session });
-            yield toAccount.save({ session });
             yield debitTransaction.save({ session });
-            yield creditTransaction.save({ session });
+            let creditTransaction = null;
+            if (toAccount) {
+                toAccount.balance += amount;
+                creditTransaction = new transaction_model_1.default({
+                    accountId: toAccount._id,
+                    amount,
+                    balance: toAccount.balance,
+                    description,
+                    category: "transfer",
+                    type: "credit",
+                    reference: fromAccount.number,
+                    fromAccountId: fromAccount._id,
+                    toAccountId: toAccount._id
+                });
+                yield toAccount.save({ session });
+                yield creditTransaction.save({ session });
+            }
             yield session.commitTransaction();
-            (0, responseHelper_1.default)(res, 200, true, "Transfer successful", {
-                fromAccount,
-                toAccount,
-                transactions: [debitTransaction, creditTransaction]
-            });
+            (0, responseHelper_1.default)(res, 200, true, "Transfer successful", Object.assign(Object.assign({ fromAccount }, (toAccount && { toAccount })), { transactions: creditTransaction ? [debitTransaction, creditTransaction] : [debitTransaction] }));
         }
         catch (error) {
             yield session.abortTransaction();
@@ -179,7 +169,6 @@ const payBill = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             (0, responseHelper_1.default)(res, 400, false, "User not authenticated");
             return;
         }
-        // Validate input
         if (amount <= 0) {
             (0, responseHelper_1.default)(res, 400, false, "Amount must be greater than zero");
             return;
@@ -188,98 +177,66 @@ const payBill = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             (0, responseHelper_1.default)(res, 400, false, "Category and description are required");
             return;
         }
-        // Verify PIN
         const isPinValid = yield (0, verifyPin_1.verifyPin)(userId, pin);
         if (!isPinValid) {
             (0, responseHelper_1.default)(res, 400, false, "Invalid PIN");
             return;
         }
-        // Find user account
         const account = yield account_model_1.default.findOne({ _id: accountId, userId });
         if (!account) {
             (0, responseHelper_1.default)(res, 404, false, "Account not found or unauthorized");
             return;
         }
-        // Check if the account has sufficient balance
         if (account.balance < amount) {
             (0, responseHelper_1.default)(res, 400, false, "Insufficient balance");
             return;
         }
-        // Deduct the amount from the account balance
         account.balance -= amount;
-        // Create a new transaction for the bill payment
         const billTransaction = new transaction_model_1.default({
             accountId: account._id,
             amount,
             balance: account.balance,
             description,
             category,
-            type: "debit", // It's a debit transaction for the bill payment
+            type: "debit"
         });
-        // Save the updated account and the transaction
         yield account.save();
         yield billTransaction.save();
-        // Send response indicating success
         (0, responseHelper_1.default)(res, 200, true, "Bill payment successful", {
             account,
-            transaction: billTransaction,
+            transaction: billTransaction
         });
     }
     catch (error) {
-        // Handle errors and send an appropriate response
         const errorMessage = error instanceof Error ? error.message : "Internal server error";
         (0, responseHelper_1.default)(res, 500, false, errorMessage);
     }
 });
 exports.payBill = payBill;
-const depositMoney = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteAccount = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
-        const { accountId, amount, description, pin } = req.body;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Assuming the user is authenticated
+        const { accountId } = req.params;
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
         if (!userId) {
             (0, responseHelper_1.default)(res, 401, false, "Unauthorized");
             return;
         }
-        // Validate the amount (ensure it's a positive number)
-        if (amount <= 0) {
-            (0, responseHelper_1.default)(res, 400, false, "Deposit amount must be greater than zero");
-            return;
-        }
-        // Verify PIN
-        const isPinValid = yield (0, verifyPin_1.verifyPin)(userId, pin);
-        if (!isPinValid) {
-            (0, responseHelper_1.default)(res, 400, false, "Invalid PIN");
-            return;
-        }
-        // Find the account
         const account = yield account_model_1.default.findOne({ _id: accountId, userId });
         if (!account) {
             (0, responseHelper_1.default)(res, 404, false, "Account not found or unauthorized");
             return;
         }
-        // Update the account balance
-        account.balance += amount;
-        yield account.save();
-        // Create a transaction record
-        const transaction = new transaction_model_1.default({
-            accountId: account._id,
-            amount,
-            balance: account.balance,
-            description: description !== null && description !== void 0 ? description : "Deposit",
-            category: "deposit",
-            type: "credit", // It's a credit to the account
-            date: new Date(),
-        });
-        yield transaction.save();
-        (0, responseHelper_1.default)(res, 200, true, "Deposit successful", {
-            account,
-            transaction,
-        });
+        if (account.balance > 0) {
+            (0, responseHelper_1.default)(res, 400, false, "Account cannot be deleted. Balance must be zero.");
+            return;
+        }
+        yield account_model_1.default.deleteOne({ _id: accountId });
+        (0, responseHelper_1.default)(res, 200, true, "Account deleted successfully");
     }
     catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Internal server error";
         (0, responseHelper_1.default)(res, 500, false, errorMessage);
     }
 });
-exports.depositMoney = depositMoney;
+exports.deleteAccount = deleteAccount;

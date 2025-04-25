@@ -64,6 +64,8 @@ const transactionSchema = new mongoose_1.Schema({
     reference: {
         type: String
     },
+    fromAccountId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Account" },
+    toAccountId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Account" },
     date: {
         type: Date,
         default: Date.now

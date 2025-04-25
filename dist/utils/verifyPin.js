@@ -15,11 +15,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyPin = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const user_model_1 = __importDefault(require("../models/user.model"));
-/**
- * @param userId
- * @param enteredPin
- * @returns Boolean
- */
 const verifyPin = (userId, enteredPin) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const user = yield user_model_1.default.findById(userId);
@@ -30,7 +25,7 @@ const verifyPin = (userId, enteredPin) => __awaiter(void 0, void 0, void 0, func
         return isPinValid;
     }
     catch (error) {
-        throw new Error("Error verifying PIN: " + (error instanceof Error ? error.message : "Unknown error"));
+        throw new Error(`Error verifying PIN: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 });
 exports.verifyPin = verifyPin;
