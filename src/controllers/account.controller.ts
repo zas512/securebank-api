@@ -231,34 +231,26 @@ export const payBill = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const depositMoney = async (req: Request, res: Response): Promise<void> => {
+export const deleteAccount = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { accountId, amount, description, pin } = req.body;
-    const userId = req.user?.id; // Assuming the user is authenticated
+    const { accountId } = req.params;
+    const userId = req.user?.id;
 
     if (!userId) {
       sendResponse(res, 401, false, "Unauthorized");
       return;
     }
 
-    // Validate the amount (ensure it's a positive number)
-    if (amount <= 0) {
-      sendResponse(res, 400, false, "Deposit amount must be greater than zero");
-      return;
-    }
-
-    // Verify PIN
-    const isPinValid = await verifyPin(userId, pin);
-    if (!isPinValid) {
-      sendResponse(res, 400, false, "Invalid PIN");
-      return;
-    }
-
-    // Find the account
     const account = await Account.findOne({ _id: accountId, userId });
 
     if (!account) {
       sendResponse(res, 404, false, "Account not found or unauthorized");
+      return;
+    }
+
+
+    if (account.balance > 0) {
+      sendResponse(res, 400, false, "Account cannot be deleted. Balance must be zero.");
       return;
     }
 
@@ -277,12 +269,13 @@ export const depositMoney = async (req: Request, res: Response): Promise<void> =
       date: new Date()
     });
 
-    await transaction.save();
 
-    sendResponse(res, 200, true, "Deposit successful", {
-      account,
-      transaction
-    });
+    await Account.deleteOne({ _id: accountId });
+
+
+    sendResponse(res, 200, true, "Account deleted successfully");
+
+
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Internal server error";
     sendResponse(res, 500, false, errorMessage);

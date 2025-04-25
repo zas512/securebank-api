@@ -12,26 +12,41 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.transferMoney = exports.getAccounts = exports.createAccount = void 0;
+exports.depositMoney = exports.payBill = exports.getAccountDetails = exports.transferMoney = exports.getAccounts = exports.createAccount = void 0;
 const account_model_1 = __importDefault(require("../models/account.model"));
 const transaction_model_1 = __importDefault(require("../models/transaction.model"));
 const responseHelper_1 = __importDefault(require("../utils/responseHelper"));
+const verifyPin_1 = require("../utils/verifyPin");
 const createAccount = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
-        const { type, currency, limit } = req.body;
+        const { type, currency, limit, pin } = req.body;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
         if (!userId) {
             (0, responseHelper_1.default)(res, 401, false, "Unauthorized");
             return;
         }
-        // Generate a random account number
+        if (!type || typeof type !== "string") {
+            (0, responseHelper_1.default)(res, 400, false, "Account type is required and must be a string");
+            return;
+        }
+        if (!pin || typeof pin !== "string") {
+            (0, responseHelper_1.default)(res, 400, false, "PIN is required and must be a string");
+            return;
+        }
+        const isPinValid = yield (0, verifyPin_1.verifyPin)(userId, pin);
+        if (!isPinValid) {
+            (0, responseHelper_1.default)(res, 400, false, "Invalid PIN");
+            return;
+        }
+        // Generate a random 10-digit account number
         const number = Math.floor(1000000000 + Math.random() * 9000000000).toString();
         const account = new account_model_1.default({
             userId,
             type,
             number,
-            currency,
+            balance: 0,
+            currency: currency !== null && currency !== void 0 ? currency : "USD",
             limit
         });
         yield account.save();
@@ -59,10 +74,16 @@ exports.getAccounts = getAccounts;
 const transferMoney = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
-        const { fromAccountId, toAccountId, amount, description } = req.body;
+        const { fromAccountId, toAccountId, amount, description, pin } = req.body;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
         if (!userId) {
             (0, responseHelper_1.default)(res, 401, false, "Unauthorized");
+            return;
+        }
+        // Verify PIN
+        const isPinValid = yield (0, verifyPin_1.verifyPin)(userId, pin);
+        if (!isPinValid) {
+            (0, responseHelper_1.default)(res, 400, false, "Invalid PIN");
             return;
         }
         // Start a session for transaction
@@ -131,3 +152,134 @@ const transferMoney = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.transferMoney = transferMoney;
+const getAccountDetails = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const { accountId } = req.params;
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        const account = yield account_model_1.default.findOne({ _id: accountId, userId });
+        if (!account) {
+            (0, responseHelper_1.default)(res, 404, false, "Account not found or unauthorized");
+            return;
+        }
+        (0, responseHelper_1.default)(res, 200, true, "Account details retrieved", { account });
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Internal server error";
+        (0, responseHelper_1.default)(res, 500, false, errorMessage);
+    }
+});
+exports.getAccountDetails = getAccountDetails;
+const payBill = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const { accountId, amount, description, category, pin } = req.body;
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        if (!userId) {
+            (0, responseHelper_1.default)(res, 400, false, "User not authenticated");
+            return;
+        }
+        // Validate input
+        if (amount <= 0) {
+            (0, responseHelper_1.default)(res, 400, false, "Amount must be greater than zero");
+            return;
+        }
+        if (!category || !description) {
+            (0, responseHelper_1.default)(res, 400, false, "Category and description are required");
+            return;
+        }
+        // Verify PIN
+        const isPinValid = yield (0, verifyPin_1.verifyPin)(userId, pin);
+        if (!isPinValid) {
+            (0, responseHelper_1.default)(res, 400, false, "Invalid PIN");
+            return;
+        }
+        // Find user account
+        const account = yield account_model_1.default.findOne({ _id: accountId, userId });
+        if (!account) {
+            (0, responseHelper_1.default)(res, 404, false, "Account not found or unauthorized");
+            return;
+        }
+        // Check if the account has sufficient balance
+        if (account.balance < amount) {
+            (0, responseHelper_1.default)(res, 400, false, "Insufficient balance");
+            return;
+        }
+        // Deduct the amount from the account balance
+        account.balance -= amount;
+        // Create a new transaction for the bill payment
+        const billTransaction = new transaction_model_1.default({
+            accountId: account._id,
+            amount,
+            balance: account.balance,
+            description,
+            category,
+            type: "debit", // It's a debit transaction for the bill payment
+        });
+        // Save the updated account and the transaction
+        yield account.save();
+        yield billTransaction.save();
+        // Send response indicating success
+        (0, responseHelper_1.default)(res, 200, true, "Bill payment successful", {
+            account,
+            transaction: billTransaction,
+        });
+    }
+    catch (error) {
+        // Handle errors and send an appropriate response
+        const errorMessage = error instanceof Error ? error.message : "Internal server error";
+        (0, responseHelper_1.default)(res, 500, false, errorMessage);
+    }
+});
+exports.payBill = payBill;
+const depositMoney = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const { accountId, amount, description, pin } = req.body;
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id; // Assuming the user is authenticated
+        if (!userId) {
+            (0, responseHelper_1.default)(res, 401, false, "Unauthorized");
+            return;
+        }
+        // Validate the amount (ensure it's a positive number)
+        if (amount <= 0) {
+            (0, responseHelper_1.default)(res, 400, false, "Deposit amount must be greater than zero");
+            return;
+        }
+        // Verify PIN
+        const isPinValid = yield (0, verifyPin_1.verifyPin)(userId, pin);
+        if (!isPinValid) {
+            (0, responseHelper_1.default)(res, 400, false, "Invalid PIN");
+            return;
+        }
+        // Find the account
+        const account = yield account_model_1.default.findOne({ _id: accountId, userId });
+        if (!account) {
+            (0, responseHelper_1.default)(res, 404, false, "Account not found or unauthorized");
+            return;
+        }
+        // Update the account balance
+        account.balance += amount;
+        yield account.save();
+        // Create a transaction record
+        const transaction = new transaction_model_1.default({
+            accountId: account._id,
+            amount,
+            balance: account.balance,
+            description: description !== null && description !== void 0 ? description : "Deposit",
+            category: "deposit",
+            type: "credit", // It's a credit to the account
+            date: new Date(),
+        });
+        yield transaction.save();
+        (0, responseHelper_1.default)(res, 200, true, "Deposit successful", {
+            account,
+            transaction,
+        });
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Internal server error";
+        (0, responseHelper_1.default)(res, 500, false, errorMessage);
+    }
+});
+exports.depositMoney = depositMoney;

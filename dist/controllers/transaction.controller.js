@@ -12,41 +12,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTransactionDetails = exports.getTransactions = void 0;
+exports.getTransactions = exports.getTransactionDetails = void 0;
 const transaction_model_1 = __importDefault(require("../models/transaction.model"));
 const account_model_1 = __importDefault(require("../models/account.model"));
 const responseHelper_1 = __importDefault(require("../utils/responseHelper"));
-const getTransactions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    try {
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-        const { startDate, endDate, type, category } = req.query;
-        // Get user's accounts
-        const userAccounts = yield account_model_1.default.find({ userId });
-        const accountIds = userAccounts.map((account) => account._id);
-        // Build query
-        const query = { accountId: { $in: accountIds } };
-        if (startDate) {
-            query.date = Object.assign(Object.assign({}, query.date), { $gte: new Date(startDate) });
-        }
-        if (endDate) {
-            query.date = Object.assign(Object.assign({}, query.date), { $lte: new Date(endDate) });
-        }
-        if (type) {
-            query.type = type;
-        }
-        if (category) {
-            query.category = category;
-        }
-        const transactions = yield transaction_model_1.default.find(query).sort({ date: -1 }).populate("accountId", "number type");
-        (0, responseHelper_1.default)(res, 200, true, "Transactions retrieved successfully", { transactions });
-    }
-    catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Internal server error";
-        (0, responseHelper_1.default)(res, 500, false, errorMessage);
-    }
-});
-exports.getTransactions = getTransactions;
 const getTransactionDetails = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -71,3 +40,22 @@ const getTransactionDetails = (req, res) => __awaiter(void 0, void 0, void 0, fu
     }
 });
 exports.getTransactionDetails = getTransactionDetails;
+const getTransactions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        const userAccounts = yield account_model_1.default.find({ userId });
+        const accountIds = userAccounts.map((account) => account._id);
+        const transactions = yield transaction_model_1.default.find({ accountId: { $in: accountIds } })
+            .sort({ date: -1 })
+            .populate("accountId", "number type");
+        (0, responseHelper_1.default)(res, 200, true, "Transactions retrieved", {
+            transactions
+        });
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Internal server error";
+        (0, responseHelper_1.default)(res, 500, false, errorMessage);
+    }
+});
+exports.getTransactions = getTransactions;
