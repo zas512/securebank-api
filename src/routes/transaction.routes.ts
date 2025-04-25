@@ -10,4 +10,4 @@ router.use(requireAuth);
 router.get("/get", getTransactions);
 router.get("/:transactionId", getTransactionDetails);
 router.post("/do-transaction", handleTransaction);
-export default router; 
+export default router;  
