@@ -1,7 +1,7 @@
 import User from "../models/user.model";
 import Account from "../models/account.model";
 import Transaction from "../models/transaction.model";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import sendResponse from "../utils/responseHelper";
 
 export const getAllUserData = async (req: Request, res: Response): Promise<void> => {
@@ -16,7 +16,7 @@ export const getAllUserData = async (req: Request, res: Response): Promise<void>
 
     // Map userId to their accounts
     const accountsMap = new Map<string, typeof accounts>();
-    accounts.forEach(account => {
+    accounts.forEach((account) => {
       const userId = account.userId.toString();
       if (!accountsMap.has(userId)) accountsMap.set(userId, []);
       accountsMap.get(userId)?.push(account);
@@ -24,21 +24,21 @@ export const getAllUserData = async (req: Request, res: Response): Promise<void>
 
     // Map userId to their transactions
     const transactionsMap = new Map<string, typeof transactions>();
-    transactions.forEach(txn => {
+    transactions.forEach((txn) => {
       const userIds: string[] = [];
 
       if ((txn.accountId as any)?.userId) userIds.push((txn.accountId as any).userId.toString());
       if ((txn.fromAccountId as any)?.userId) userIds.push((txn.fromAccountId as any).userId.toString());
       if ((txn.toAccountId as any)?.userId) userIds.push((txn.toAccountId as any).userId.toString());
 
-      userIds.forEach(id => {
+      userIds.forEach((id) => {
         if (!transactionsMap.has(id)) transactionsMap.set(id, []);
         transactionsMap.get(id)?.push(txn);
       });
     });
 
     // Construct final result
-    const result = users.map(user => {
+    const result = users.map((user) => {
       const id = user._id.toString();
       return {
         user: {
@@ -57,5 +57,3 @@ export const getAllUserData = async (req: Request, res: Response): Promise<void>
     sendResponse(res, 500, false, errorMessage);
   }
 };
-
-

@@ -13,8 +13,6 @@ router.use("/accounts", accountRoutes);
 router.use("/transactions", transactionRoutes);
 router.use("/user", userRoutes);
 router.use("/overview", overviewRoutes);
-
-//  just for admin
 router.use("/admin", adminRoutes);
 
 export default router;

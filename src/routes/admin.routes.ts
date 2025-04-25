@@ -5,7 +5,6 @@ import requireAuth from "../middlewares/requireAuth";
 const router = express.Router();
 
 router.use(requireAuth);
-
 router.get("/fetch-everything", getAllUserData);
 
 export default router;

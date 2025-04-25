@@ -5,7 +5,6 @@ import requireAuth from "../middlewares/requireAuth";
 const router = express.Router();
 
 router.use(requireAuth);
-
 router.put("/profile", updateUserProfile);
 
 export default router;
