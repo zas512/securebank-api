@@ -7,7 +7,7 @@ const router = Router();
 // All routes require authentication
 router.use(requireAuth);
 
-router.get("/", getTransactions);
+router.get("/get", getTransactions);
 router.get("/:transactionId", getTransactionDetails);
 
 export default router; 
